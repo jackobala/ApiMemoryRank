@@ -1,23 +1,57 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
 
-const db = new sqlite3.Database(path.join(__dirname, 'scores.db'), (err) => {
-    if (err) {
-        console.error('Erro ao abrir o banco de dados:', err);
-    } else {
-        console.log('Banco de dados conectado.');
-    }
+const pool = new Pool({
+    user: process.env.PG_USER,
+    host: process.env.PG_HOST,
+    database: process.env.PG_DATABASE,
+    password: process.env.PG_PASSWORD,
+    port: process.env.PG_PORT,
 });
 
-db.serialize(() => {
-    db.run(`
-        CREATE TABLE IF NOT EXISTS scores (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            apelido TEXT,
-            tempo INTEGER,
-            jogadas INTEGER
-        )
-    `);
+pool.on('connect', () => {
+    console.log('Conectado ao banco de dados PostgreSQL');
 });
 
-module.exports = db;
+const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS scores (
+        id SERIAL PRIMARY KEY,
+        apelido TEXT NOT NULL,
+        tempo INTEGER NOT NULL,
+        jogadas INTEGER NOT NULL
+    );
+`;
+
+pool.query(createTableQuery)
+    .then(() => {
+        console.log('Tabela criada ou já existe');
+    })
+    .catch(err => {
+        console.error('Erro ao criar tabela:', err);
+    });
+
+async function getScores() {
+    const query = `SELECT apelido, tempo, jogadas FROM scores ORDER BY tempo ASC, jogadas ASC LIMIT 5`;
+    const { rows } = await pool.query(query);
+    return rows;
+}
+
+async function addScore(apelido, tempo, jogadas) {
+    const query = `
+        INSERT INTO scores (apelido, tempo, jogadas) 
+        VALUES ($1, $2, $3)
+        RETURNING *;
+    `;
+    await pool.query(query, [apelido, tempo, jogadas]);
+
+    const deleteQuery = `
+        DELETE FROM scores
+        WHERE id NOT IN (
+            SELECT id FROM scores
+            ORDER BY tempo ASC, jogadas ASC
+            LIMIT 5
+        );
+    `;
+    await pool.query(deleteQuery);
+}
+
+module.exports = { getScores, addScore };
