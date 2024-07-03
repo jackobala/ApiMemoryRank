@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const { getScores, addScore } = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -8,9 +7,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-app.use(express.static(path.join(__dirname, 'frontend')));
-
-app.post('/submit-score', async (req, res) => {
+app.post('/api/submit-score', async (req, res) => {
     const { apelido, tempo, jogadas } = req.body;
 
     if (!apelido || !tempo || !jogadas) {
@@ -28,7 +25,7 @@ app.post('/submit-score', async (req, res) => {
     }
 });
 
-app.get('/leaderboard', async (req, res) => {
+app.get('/api/leaderboard', async (req, res) => {
     try {
         const scores = await getScores();
         console.log("Ranking enviado:", scores);
@@ -37,10 +34,6 @@ app.get('/leaderboard', async (req, res) => {
         console.error('Erro ao obter ranking:', err);
         res.status(500).send('Erro ao obter ranking');
     }
-});
-
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend/index.html'));
 });
 
 app.listen(PORT, () => {
