@@ -10,8 +10,21 @@ app.use(express.json());
 app.post('/api/submit-score', async (req, res) => {
     const { apelido, tempo, jogadas } = req.body;
 
+    // Validações
     if (!apelido || !tempo || !jogadas) {
         return res.status(400).send('Missing parameters');
+    }
+
+    if (apelido.length > 8 || /\s/.test(apelido)) {
+        return res.status(400).send('Apelido inválido. Deve ter no máximo 8 caracteres e não pode conter espaços.');
+    }
+
+    if (jogadas < 6) {
+        return res.status(400).send('Número de jogadas inválido.');
+    }
+
+    if (tempo < 6) {
+        return res.status(400).send('Tempo inválido.');
     }
 
     console.log("Score recebido:", { apelido, tempo, jogadas });
